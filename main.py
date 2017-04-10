@@ -3,11 +3,12 @@ from lxml.html import fromstring
 
 
 def login():
+    from getpass import getpass
     page = session.get('https://sats.itea.ntnu.no/sso-wrapper/web/wrapper?target=itslearning')
     tree = fromstring(page.content)
     form = tree.forms[0]
-    form.inputs['feidename'].value = ''
-    form.inputs['password'].value = ''
+    form.inputs['feidename'].value = input('Brukernavn: ')
+    form.inputs['password'].value = getpass('Passord: ')
     data = {i.xpath("@name")[0]: i.xpath("@value")[0] for i in form.xpath(".//input[@name]")}
     form.action = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
     return session.post(form.action, data=data)
