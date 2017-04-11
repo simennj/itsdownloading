@@ -67,7 +67,9 @@ def download_content():
             download_url = 'https://ntnu.itslearning.com' + \
                            fromstring(file_page.content).xpath('//a[@title="Download"]/@href')[0][2:]
             download = session.get(download_url, stream=True)
-            filepath = path.join(current_dir, re.findall('filename="(.+)"', download.headers['content-disposition'])[0])
+            raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])[0]
+            filename = raw_file_name.encode('iso-8859-1').decode()
+            filepath = path.join(current_dir, filename)
             with open(filepath, 'wb') as download_file:
                 for chunk in download:
                     download_file.write(chunk)
