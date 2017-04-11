@@ -26,13 +26,14 @@ def confirm_login():
 
 
 def select_course():
+    courses_page = session.get("https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
     tree = fromstring(courses_page.content)
     courses = {course.xpath('@data-title')[0]: course.xpath('a/@href')[0].split('=')[-1]
                for course in tree.xpath('//li')}
     course_names = list(courses)
     for index, course_name in enumerate(course_names):
         print('{}: {}'.format(index, course_name))
-    selected_course = courses[course_names[int(input('Velg fag (indeks)'))]]
+    selected_course = courses[course_names[int(input('Choose course (index): '))]]
     return session.get(
         'https://ntnu.itslearning.com/Status/PersonalStatus.aspx?CourseID={}&PersonId={}'.format(
             selected_course,
@@ -56,6 +57,7 @@ def download_content():
             current_dir, _ = path.split(current_dir)
             current_indent -= 1
         if element_type == 'folder':
+            name = "".join(char if char.isalnum() else '_' for char in name).strip()
             current_dir = path.join(current_dir, name)
             current_indent += 1
             if not os.path.exists(current_dir):
@@ -84,8 +86,8 @@ def download_content():
                 print('Downloaded: ', filepath)
         elif element_type == 'note' or element_type == 'LearningToolElement':
             page_to_download = session.get('https://ntnu.itslearning.com/{}/{}'.format(element_type, url)).content
-            with open(path.join(current_dir, fromstring(page_to_download).xpath('head/title/text()')[0] + '.html'),
-                      'wb') as download_file:
+            name = "".join(char if char.isalnum() else '_' for char in name).strip()
+            with open(path.join(current_dir, name + '.html'), 'wb') as download_file:
                 download_file.write(page_to_download)
             print('Saved {} as a html file'.format(path.join(current_dir, name)))
         else:
@@ -94,12 +96,7 @@ def download_content():
 
 with requests.Session() as session:
     confirm_login_page = login()
-
-    its_page = confirm_login()
-    user_id = fromstring(its_page.content).xpath('//@data-personid')[0]
-
-    courses_page = session.get("https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
-
+    home_page = confirm_login()
+    user_id = fromstring(home_page.content).xpath('//@data-personid')[0]
     contents_page = select_course()
-
     download_content()
