@@ -7,4 +7,4 @@ You can run the script directly using python 3 and the libraries listed in requi
 
 ## Run from standalone executable
 You can find an executable for Windows [here](http://simennj.com/itsdownloading.exe).
-You can find an executable for Linux (and possibly MacOS) [here](http://simennj.com/itsdownloading).
+You can find an executable for Linux [here](http://simennj.com/itsdownloading).
