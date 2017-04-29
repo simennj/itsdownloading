@@ -1,9 +1,7 @@
-import re
-
-import os
+from re import findall
 import requests
 from lxml.html import fromstring
-from os import path
+from os import path, mkdir
 
 
 def login():
@@ -47,8 +45,8 @@ def download_content():
     course_name = tree.xpath('//tr[@id="row_0"]/td/span/text()')[0].strip()
     current_indent = 0
     current_dir = path.join(path.curdir, course_name)
-    if not os.path.exists(current_dir):
-        os.mkdir(current_dir)
+    if not path.exists(current_dir):
+        mkdir(current_dir)
     for element in tree.xpath('//td[@headers="personal_report_list_header_subject" and text()]'):
         indent = element.xpath('./text()')[0].count('\xa0') // 7
         _, element_type, url = element.xpath('a/@href')[0].split('/')
@@ -60,14 +58,14 @@ def download_content():
             name = "".join(char if char.isalnum() else '_' for char in name).strip()
             current_dir = path.join(current_dir, name)
             current_indent += 1
-            if not os.path.exists(current_dir):
-                os.mkdir(current_dir)
+            if not path.exists(current_dir):
+                mkdir(current_dir)
         elif element_type == 'file':
             file_page = session.get('https://ntnu.itslearning.com/{}/{}'.format(element_type, url))
             download_url = 'https://ntnu.itslearning.com' + \
                            fromstring(file_page.content).xpath('//a[@title="Download"]/@href')[0][2:]
             download = session.get(download_url, stream=True)
-            raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])[0]
+            raw_file_name = findall('filename="(.+)"', download.headers['content-disposition'])[0]
             filename = raw_file_name.encode('iso-8859-1').decode()
             filepath = path.join(current_dir, filename)
             with open(filepath, 'wb') as download_file:
@@ -81,7 +79,7 @@ def download_content():
             for download_url in download_urls:
                 download = session.get(download_url, stream=True)
                 filepath = path.join(current_dir,
-                                     re.findall('filename="(.+)"', download.headers['content-disposition'])[0])
+                                     findall('filename="(.+)"', download.headers['content-disposition'])[0])
                 with open(filepath, 'wb') as download_file:
                     for chunk in download:
                         download_file.write(chunk)
