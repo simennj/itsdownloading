@@ -96,3 +96,6 @@ Session.vim
 .netrwhist
 # auto-generated tag files
 tags
+
+# Custom
+Downloaded courses/

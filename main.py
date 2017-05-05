@@ -1,7 +1,9 @@
-from re import findall
+import re
+
+import os
 import requests
 from lxml.html import fromstring
-from os import path, mkdir
+from os import path
 
 
 def login():
@@ -23,30 +25,43 @@ def confirm_login():
     return session.post("https://sats.itea.ntnu.no/sso-wrapper/feidelogin", data=data)
 
 
-def select_course():
+def select_courses():
     courses_page = session.get("https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
     tree = fromstring(courses_page.content)
     courses = {course.xpath('@data-title')[0]: course.xpath('a/@href')[0].split('=')[-1]
                for course in tree.xpath('//li')}
     course_names = list(courses)
+    print('Found the following favorited courses:')
     for index, course_name in enumerate(course_names):
         print('{}: {}'.format(index, course_name))
-    selected_course = courses[course_names[int(input('Choose course (index): '))]]
-    return session.get(
-        'https://ntnu.itslearning.com/Status/PersonalStatus.aspx?CourseID={}&PersonId={}'.format(
-            selected_course,
-            user_id
+    print('all: all')
+    print('List the ones you want to download. Eg. 2 5 6 7 12 3. Or type all')
+    answer = input('Choose courses: ')
+    selected_courses = []
+    if answer == 'all':
+        selected_courses = courses.values()
+    else:
+        for i in answer.split(): selected_courses.append(courses[course_names[int(i)]])
+    sessions = []
+    for selected_course in selected_courses:
+        sessions.append(
+                session.get(
+                    'https://ntnu.itslearning.com/Status/PersonalStatus.aspx?CourseID={}&PersonId={}'.format(
+                    selected_course,
+                    user_id
+                )
+            )
         )
-    )
+    return sessions
 
-
-def download_content():
+def download_content(contents_page):
     tree = fromstring(contents_page.content)
     course_name = tree.xpath('//tr[@id="row_0"]/td/span/text()')[0].strip()
     current_indent = 0
-    current_dir = path.join(path.curdir, course_name)
-    if not path.exists(current_dir):
-        mkdir(current_dir)
+    course_folder = "Downloaded courses"
+    current_dir = path.join(path.curdir, course_folder, course_name)
+    if not os.path.exists(current_dir):
+        os.makedirs(current_dir)
     for element in tree.xpath('//td[@headers="personal_report_list_header_subject" and text()]'):
         indent = element.xpath('./text()')[0].count('\xa0') // 7
         _, element_type, url = element.xpath('a/@href')[0].split('/')
@@ -58,14 +73,14 @@ def download_content():
             name = "".join(char if char.isalnum() else '_' for char in name).strip()
             current_dir = path.join(current_dir, name)
             current_indent += 1
-            if not path.exists(current_dir):
-                mkdir(current_dir)
+            if not os.path.exists(current_dir):
+                os.mkdir(current_dir)
         elif element_type == 'file':
             file_page = session.get('https://ntnu.itslearning.com/{}/{}'.format(element_type, url))
             download_url = 'https://ntnu.itslearning.com' + \
-                           fromstring(file_page.content).xpath('//a[@title="Download"]/@href')[0][2:]
+                           fromstring(file_page.content).xpath('//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
             download = session.get(download_url, stream=True)
-            raw_file_name = findall('filename="(.+)"', download.headers['content-disposition'])[0]
+            raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])[0]
             filename = raw_file_name.encode('iso-8859-1').decode()
             filepath = path.join(current_dir, filename)
             with open(filepath, 'wb') as download_file:
@@ -79,7 +94,7 @@ def download_content():
             for download_url in download_urls:
                 download = session.get(download_url, stream=True)
                 filepath = path.join(current_dir,
-                                     findall('filename="(.+)"', download.headers['content-disposition'])[0])
+                                     re.findall('filename="(.+)"', download.headers['content-disposition'])[0])
                 with open(filepath, 'wb') as download_file:
                     for chunk in download:
                         download_file.write(chunk)
@@ -98,5 +113,5 @@ with requests.Session() as session:
     confirm_login_page = login()
     home_page = confirm_login()
     user_id = fromstring(home_page.content).xpath('//@data-personid')[0]
-    contents_page = select_course()
-    download_content()
+    contents_pages = select_courses()
+    for page in contents_pages: download_content(page)
