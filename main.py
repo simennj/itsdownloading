@@ -65,7 +65,7 @@ def download_content():
         elif element_type == 'file':
             file_page = session.get('https://ntnu.itslearning.com/{}/{}'.format(element_type, url))
             download_url = 'https://ntnu.itslearning.com' + \
-                           fromstring(file_page.content).xpath('//a[@title="Download"]/@href')[0][2:]
+                           fromstring(file_page.content).xpath('//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
             download = session.get(download_url, stream=True)
             raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])[0]
             filename = raw_file_name.encode('iso-8859-1').decode()
