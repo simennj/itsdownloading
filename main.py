@@ -25,30 +25,43 @@ def confirm_login():
     return session.post("https://sats.itea.ntnu.no/sso-wrapper/feidelogin", data=data)
 
 
-def select_course():
+def select_courses():
     courses_page = session.get("https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
     tree = fromstring(courses_page.content)
     courses = {course.xpath('@data-title')[0]: course.xpath('a/@href')[0].split('=')[-1]
                for course in tree.xpath('//li')}
     course_names = list(courses)
+    print('Found the following favorited courses:')
     for index, course_name in enumerate(course_names):
         print('{}: {}'.format(index, course_name))
-    selected_course = courses[course_names[int(input('Choose course (index): '))]]
-    return session.get(
-        'https://ntnu.itslearning.com/Status/PersonalStatus.aspx?CourseID={}&PersonId={}'.format(
-            selected_course,
-            user_id
+    print('all: all')
+    print('List the ones you want to download. Eg. 2 5 6 7 12 3. Or type all')
+    answer = input('Choose courses: ')
+    selected_courses = []
+    if answer == 'all':
+        selected_courses = courses.values()
+    else:
+        for i in answer.split(): selected_courses.append(courses[course_names[int(i)]])
+    sessions = []
+    for selected_course in selected_courses:
+        sessions.append(
+                session.get(
+                    'https://ntnu.itslearning.com/Status/PersonalStatus.aspx?CourseID={}&PersonId={}'.format(
+                    selected_course,
+                    user_id
+                )
+            )
         )
-    )
+    return sessions
 
-
-def download_content():
+def download_content(contents_page):
     tree = fromstring(contents_page.content)
     course_name = tree.xpath('//tr[@id="row_0"]/td/span/text()')[0].strip()
     current_indent = 0
-    current_dir = path.join(path.curdir, course_name)
+    course_folder = "Downloaded courses"
+    current_dir = path.join(path.curdir, course_folder, course_name)
     if not os.path.exists(current_dir):
-        os.mkdir(current_dir)
+        os.makedirs(current_dir)
     for element in tree.xpath('//td[@headers="personal_report_list_header_subject" and text()]'):
         indent = element.xpath('./text()')[0].count('\xa0') // 7
         _, element_type, url = element.xpath('a/@href')[0].split('/')
@@ -100,5 +113,5 @@ with requests.Session() as session:
     confirm_login_page = login()
     home_page = confirm_login()
     user_id = fromstring(home_page.content).xpath('//@data-personid')[0]
-    contents_page = select_course()
-    download_content()
+    contents_pages = select_courses()
+    for page in contents_pages: download_content(page)
