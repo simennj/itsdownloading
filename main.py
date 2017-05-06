@@ -1,5 +1,6 @@
-import os
 import re
+
+import os
 from lxml.html import fromstring
 
 
@@ -7,14 +8,15 @@ def main():
     import requests
     with requests.Session() as session:
         feide_login(session)
-        selected_courses = select_courses(session)
-        for selected_course in selected_courses:
-            page = session.get("https://ntnu.itslearning.com/main.aspx?CourseID=" + selected_course)
+        selected_urls = select_urls(session)
+        for selected_url in selected_urls:
+            page = session.get(selected_url)
             url = page.url
             tree = fromstring(page.content)
             folder_id = re.search('var contentAreaRootFolderId = \"item\" \+ ([0-9]+);',
                                   tree.xpath('//aside/script')[0].text).groups()[0]
-            directory = os.path.join(os.path.curdir, 'Downloaded courses')
+            title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
+            directory = os.path.join(os.path.curdir, 'Downloaded courses', title)
             download_folder(directory, url, folder_id, session)
 
 
@@ -52,23 +54,53 @@ def confirm_login(session, confirm_login_page):
                         data=get_values_from_form(form)).content != b'Required parameter RelayState not found.'
 
 
-def select_courses(session):
-    page = session.get("https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
-    tree = fromstring(page.content)
-    courses = {course.xpath('@data-title')[0]: course.xpath('a/@href')[0].split('=')[-1]
-               for course in tree.xpath('//li')}
-    course_names = list(courses)
-    print('Found the following favorited courses:')
-    for index, course_name in enumerate(course_names):
+def select_urls(session):
+    choices = get_courses_and_projects(session)
+    names = list(choices)
+    print('Found the following favorite courses and projects:')
+    for index, course_name in enumerate(names):
         print('{}: {}'.format(index, course_name))
     print('all: all')
-    print('List the ones you want to download. Eg. 2 5 6 7 12 3. Or type all')
-    answer = input('Choose courses: ')
+    answer = input('List the ones you want to download. Eg. 2 5 6 7 12 3. Or type all\n: ')
     if answer == 'all':
-        selected_courses = courses.values()
+        selected_urls = choices.values()
     else:
-        selected_courses = [courses[course_names[int(i)]] for i in answer.split()]
-    return selected_courses
+        selected_urls = [choices[names[int(i)]] for i in answer.split()]
+    return selected_urls
+
+
+def get_courses_and_projects(session):
+    courses = get_courses(session)
+    projects = get_projects(session)
+    return {
+        **{
+            course_name: "https://ntnu.itslearning.com/main.aspx?CourseID=" + course_id
+            for course_name, course_id in courses.items()
+        },
+        **{
+            project_name: "https://ntnu.itslearning.com/main.aspx?ProjectID=" + project_id
+            for project_name, project_id in projects.items()
+        }
+    }
+
+
+def get_courses(session):
+    courses = retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
+    return courses
+
+
+def get_projects(session):
+    projects = retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetProjects")
+    return projects
+
+
+def retrieve_topmenu_list(session, url):
+    page = session.get(url)
+    tree = fromstring(page.content)
+    return {
+        item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
+        for item in tree.xpath('//li')
+    }
 
 
 def download_folder(directory, url, folder_id, session):
@@ -91,6 +123,8 @@ def download_folder(directory, url, folder_id, session):
             save_note_as_html(directory, link_url, session, link_name)
         elif link_type == 'LearningToolElement':
             save_links_as_html(directory, link_url, session, link_name)
+        elif link_type == '':
+            pass
         else:
             print('Will not download: {}, (is a {})'.format(os.path.join(directory, link_name), link_type))
 
