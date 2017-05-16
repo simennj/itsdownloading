@@ -100,7 +100,7 @@ def retrieve_topmenu_list(session, url):
     tree = fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
-        for item in tree.xpath('//li')
+        for item in filter(lambda item: item.xpath('@data-title') and item.xpath('a/@href'), [item for item in tree.xpath('//li')])
     }
 
 
