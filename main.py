@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 import re
 
 import os
@@ -99,7 +100,7 @@ def retrieve_topmenu_list(session, url):
     tree = fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
-        for item in tree.xpath('//li')
+        for item in filter(lambda item: item.xpath('@data-title') and item.xpath('a/@href'), [item for item in tree.xpath('//li')])
     }
 
 
@@ -166,7 +167,11 @@ def download_file(directory, link_url, session):
                    fromstring(file_page.content).xpath(
                        '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
     download = session.get(download_url, stream=True)
-    raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])[0]
+    raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
+    if raw_file_name:
+        raw_file_name = raw_file_name[0]
+    else:
+        return
     filename = raw_file_name.encode('iso-8859-1').decode()
     filepath = os.path.join(directory, filename)
     with open(filepath, 'wb') as downloaded_file:
