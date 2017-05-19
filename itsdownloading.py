@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
-import re
+import sys
 
 import os
-import sys
+import re
 from lxml.html import fromstring
 
 
@@ -179,7 +179,8 @@ def download_file(directory, link_url, session):
     print('Downloaded: ', filepath)
 
 
-if sys.version_info.major == 3 and sys.version_info.minor >= 5:
-    main()
-else:
-    print('This script is made for python 3.5 (or later)')
+if __name__ == '__main__':
+    if sys.version_info.major == 3 and sys.version_info.minor >= 5:
+        main()
+    else:
+        print('This script is made for python 3.5 (or later)')
