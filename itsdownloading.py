@@ -12,14 +12,7 @@ def main():
         feide_login(session)
         selected_urls = select_urls(session)
         for selected_url in selected_urls:
-            page = session.get(selected_url)
-            url = page.url
-            tree = fromstring(page.content)
-            folder_id = re.search('var contentAreaRootFolderId = \"item\" \+ ([0-9]+);',
-                                  tree.xpath('//aside/script')[0].text).groups()[0]
-            title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
-            directory = os.path.join(os.path.curdir, 'Downloaded courses', title)
-            download_folder(directory, url, folder_id, session)
+            download_course_or_project(session, selected_url)
 
 
 def feide_login(session):
@@ -99,8 +92,20 @@ def retrieve_topmenu_list(session, url):
     tree = fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
-        for item in filter(lambda item: item.xpath('@data-title') and item.xpath('a/@href'), [item for item in tree.xpath('//li')])
+        for item in tree.xpath('//li')
+        if item.xpath('@data-title') and item.xpath('a/@href')
     }
+
+
+def download_course_or_project(session, url):
+    page = session.get(url)
+    url = page.url
+    tree = fromstring(page.content)
+    folder_id = re.search('var contentAreaRootFolderId = \"item\" \+ ([0-9]+);',
+                          tree.xpath('//aside/script')[0].text).groups()[0]
+    title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
+    directory = os.path.join(os.path.curdir, 'Downloaded courses', title)
+    download_folder(directory, url, folder_id, session)
 
 
 def download_folder(directory, url, folder_id, session):
