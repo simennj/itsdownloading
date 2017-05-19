@@ -87,13 +87,11 @@ def get_courses_and_projects(session):
 
 
 def get_courses(session):
-    courses = retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
-    return courses
+    return retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
 
 
 def get_projects(session):
-    projects = retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetProjects")
-    return projects
+    return retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetProjects")
 
 
 def retrieve_topmenu_list(session, url):
@@ -180,7 +178,8 @@ def download_file(directory, link_url, session):
             downloaded_file.write(chunk)
     print('Downloaded: ', filepath)
 
-if sys.version_info.major == 3 and sys.version_info.minor >= 6:
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 5:
     main()
 else:
-    print('This script is made for python 3.6 (or higher)')
+    print('This script is made for python 3.5 (or later)')
