@@ -1,6 +1,7 @@
 import re
 
 import os
+import sys
 from lxml.html import fromstring
 
 
@@ -174,5 +175,7 @@ def download_file(directory, link_url, session):
             downloaded_file.write(chunk)
     print('Downloaded: ', filepath)
 
-
-main()
+if sys.version_info.major == 3 and sys.version_info.minor >= 6:
+    main()
+else:
+    print('This script is made for python 3.6 (or higher)')
