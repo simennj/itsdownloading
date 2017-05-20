@@ -61,10 +61,10 @@ def get_values_from_form(form):
 
 def confirm_login(confirm_login_page):
     form = get_form_from_page(confirm_login_page)
-    return session.post(
-        form.action,
-        data=get_values_from_form(form)
-    ).content != b'Required parameter RelayState not found.'
+    response = session.post(form.action, data=get_values_from_form(form)).content
+    with open('login_response.html', 'wb') as file:
+        file.write(response)
+    return response != b'Required parameter RelayState not found.'
 
 
 def select_urls():
@@ -107,6 +107,8 @@ def get_projects():
 
 def retrieve_topmenu_list(url):
     page = session.get(url)
+    with open('its.html', 'wb') as file:
+        file.write(page.content)
     tree = fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
