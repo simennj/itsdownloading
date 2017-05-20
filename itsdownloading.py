@@ -7,6 +7,9 @@ import requests
 from lxml.html import fromstring
 
 school = 'ntnu'
+if re.match('h.*', input('Choose ntnu or hist: ')):
+    school = 'hist'
+print('You chose ' + school)
 base_url = 'https://{}.itslearning.com'.format(school)
 session = requests.Session()
 
