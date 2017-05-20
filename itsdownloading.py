@@ -3,39 +3,52 @@ import sys
 
 import os
 import re
+import requests
 from lxml.html import fromstring
+
+school = 'ntnu'
+base_url = 'https://{}.itslearning.com'.format(school)
+session = requests.Session()
 
 
 def main():
-    import requests
-    with requests.Session() as session:
-        feide_login(session)
-        selected_urls = select_urls(session)
-        for selected_url in selected_urls:
-            download_course_or_project(session, selected_url)
+    console_login()
+    selected_urls = select_urls()
+    for selected_url in selected_urls:
+        download_course_or_project(selected_url)
 
 
-def feide_login(session):
+def console_login():
+    import getpass
     logged_in = False
     while not logged_in:
-        page = session.get('https://sats.itea.ntnu.no/sso-wrapper/web/wrapper?target=itslearning')
-        form = get_form_from_page(page)
-        form = fill_login_form(form)
-        login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
-        data = get_values_from_form(form)
-        confirm_login_page = session.post(login_url, data=data)
-        logged_in = confirm_login(session, confirm_login_page)
+        username = input('Brukernavn: ')
+        password = getpass.getpass('Passord: ')
+        logged_in = attempt_login(username, password)
+
+
+def attempt_login(username, password):
+    form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + school))
+    form = fill_login_form(form, username, password)
+    login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
+    data = get_values_from_form(form)
+    confirm_login_page = session.post(login_url, data=data)
+    logged_in = confirm_login(confirm_login_page)
+    return logged_in
 
 
 def get_form_from_page(page):
     tree = fromstring(page.content)
-    return tree.forms[0]
+    form = tree.forms[0]
+    if form.xpath('fieldset/select[@name="org"]'):
+        page = session.get(page.url + '&org=ntnu.no')
+        return get_form_from_page(page)
+    return form
 
 
-def fill_login_form(form):
-    import getpass
-    form.inputs['feidename'].value = input('Brukernavn: ')
-    form.inputs['password'].value = getpass.getpass('Passord: ')
+def fill_login_form(form, username, password):
+    form.inputs['feidename'].value = username
+    form.inputs['password'].value = password
     return form
 
 
@@ -43,14 +56,16 @@ def get_values_from_form(form):
     return {i.xpath("@name")[0]: i.xpath("@value")[0] for i in form.xpath(".//input[@name]") if i.xpath("@value")}
 
 
-def confirm_login(session, confirm_login_page):
+def confirm_login(confirm_login_page):
     form = get_form_from_page(confirm_login_page)
-    return session.post("https://sats.itea.ntnu.no/sso-wrapper/feidelogin",
-                        data=get_values_from_form(form)).content != b'Required parameter RelayState not found.'
+    return session.post(
+        form.action,
+        data=get_values_from_form(form)
+    ).content != b'Required parameter RelayState not found.'
 
 
-def select_urls(session):
-    choices = get_courses_and_projects(session)
+def select_urls():
+    choices = get_courses_and_projects()
     names = list(choices)
     print('Found the following favorite courses and projects:')
     for index, course_name in enumerate(names):
@@ -64,30 +79,30 @@ def select_urls(session):
     return selected_urls
 
 
-def get_courses_and_projects(session):
-    courses = get_courses(session)
-    projects = get_projects(session)
+def get_courses_and_projects():
+    courses = get_courses()
+    projects = get_projects()
     return {
         **{
-            course_name: "https://ntnu.itslearning.com/main.aspx?CourseID=" + course_id
+            course_name: base_url + "/main.aspx?CourseID=" + course_id
             for course_name, course_id in courses.items()
         },
         **{
-            project_name: "https://ntnu.itslearning.com/main.aspx?ProjectID=" + project_id
+            project_name: base_url + "/main.aspx?ProjectID=" + project_id
             for project_name, project_id in projects.items()
         }
     }
 
 
-def get_courses(session):
-    return retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetCourses")
+def get_courses():
+    return retrieve_topmenu_list(base_url + "/TopMenu/TopMenu/GetCourses")
 
 
-def get_projects(session):
-    return retrieve_topmenu_list(session, "https://ntnu.itslearning.com/TopMenu/TopMenu/GetProjects")
+def get_projects():
+    return retrieve_topmenu_list(base_url + "/TopMenu/TopMenu/GetProjects")
 
 
-def retrieve_topmenu_list(session, url):
+def retrieve_topmenu_list(url):
     page = session.get(url)
     tree = fromstring(page.content)
     return {
@@ -97,7 +112,7 @@ def retrieve_topmenu_list(session, url):
     }
 
 
-def download_course_or_project(session, url):
+def download_course_or_project(url):
     page = session.get(url)
     url = page.url
     tree = fromstring(page.content)
@@ -105,43 +120,43 @@ def download_course_or_project(session, url):
                           tree.xpath('//aside/script')[0].text).groups()[0]
     title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
     directory = os.path.join(os.path.curdir, 'Downloaded courses', title)
-    download_folder(directory, url, folder_id, session)
+    download_folder(directory, url, folder_id)
 
 
-def download_folder(directory, url, folder_id, session):
+def download_folder(directory, url, folder_id):
     page = session.get('{}&id=item{}'.format(url, folder_id))
     tree = fromstring(page.content)
     os.makedirs(directory, exist_ok=True)
     for link_element in tree.xpath('//a'):
         link_type, link_tail = link_element.xpath('@href')[0].split('/')[-2:]
-        link_url = 'https://ntnu.itslearning.com/{}/{}'.format(link_type, link_tail)
+        link_url = '{}/{}/{}'.format(base_url, link_type, link_tail)
         link_name = "".join(char if char.isalnum() else '_' for char in link_element.xpath('.//text()')[0].strip())
         if link_type == 'Folder':
             new_directory = os.path.join(directory, link_name)
             folder_id = re.search('FolderID=([0-9]+)', link_tail).groups()[0]
-            download_folder(new_directory, url, folder_id, session)
+            download_folder(new_directory, url, folder_id)
         elif link_type == 'File':
-            download_file(directory, link_url, session)
+            download_file(directory, link_url)
         elif link_type == 'essay':
-            download_essay(directory, link_url, session)
+            download_essay(directory, link_url)
         elif link_type == 'note':
-            save_note_as_html(directory, link_url, session, link_name)
+            save_note_as_html(directory, link_url, link_name)
         elif link_type == 'LearningToolElement':
-            save_links_as_html(directory, link_url, session, link_name)
+            save_links_as_html(directory, link_url, link_name)
         elif link_type == '':
             pass
         else:
             print('Will not download: {}, (is a {})'.format(os.path.join(directory, link_name), link_type))
 
 
-def save_note_as_html(directory, link_url, session, name):
+def save_note_as_html(directory, link_url, name):
     page_to_download = session.get(link_url).content
     with open(os.path.join(directory, name + '.html'), 'wb') as downloaded_file:
         downloaded_file.write(page_to_download)
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def save_links_as_html(directory, link_url, session, name):
+def save_links_as_html(directory, link_url, name):
     page = session.get(link_url)
     tree = fromstring(page.content)
     url = tree.xpath('//iframe/@src')[0]
@@ -151,7 +166,7 @@ def save_links_as_html(directory, link_url, session, name):
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def download_essay(directory, link_url, session):
+def download_essay(directory, link_url):
     essay_page = session.get(link_url)
     download_urls = fromstring(essay_page.content).xpath(
         '//div[@id="EssayDetailedInformation_FileListWrapper_FileList"]/ul/li/a/@href')
@@ -165,9 +180,9 @@ def download_essay(directory, link_url, session):
         print('Downloaded: ', filepath)
 
 
-def download_file(directory, link_url, session):
+def download_file(directory, link_url):
     file_page = session.get(link_url)
-    download_url = 'https://ntnu.itslearning.com' + \
+    download_url = base_url + \
                    fromstring(file_page.content).xpath(
                        '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
     download = session.get(download_url, stream=True)
