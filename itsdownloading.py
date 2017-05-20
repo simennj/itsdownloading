@@ -61,10 +61,14 @@ def get_values_from_form(form):
 
 def confirm_login(confirm_login_page):
     form = get_form_from_page(confirm_login_page)
-    response = session.post(form.action, data=get_values_from_form(form)).content
+    if form.action[0:8] != 'https://':
+        return False
+    response = session.post(form.action, data=get_values_from_form(form))
     with open('login_response.html', 'wb') as file:
-        file.write(response)
-    return response != b'Required parameter RelayState not found.'
+        file.write(response.content)
+    if response.url == 'https://www.itslearning.com/elogin/default.aspx':
+        return confirm_login(response)
+    return 'itslearning.com' in response.url
 
 
 def select_urls():
