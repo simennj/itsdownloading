@@ -9,4 +9,4 @@ You can run the script directly using python 3.5 (or later) and the libraries li
 
 ## Run from standalone executable
 Since python can be a bit of a pain to set up on windows, i have created an executable for Windows
-[here](http://simennj.com/itsdownloading.exe).
+[here](https://github.com/simennj/itsdownloading/releases/download/v1.0/itsdownloading.exe).
