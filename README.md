@@ -8,5 +8,5 @@ You can run the script directly using python 3.5 (or later) and the libraries li
 (use pip install -r requirements.txt to install them using pip).
 
 ## Run from standalone executable
-Since python can be a bit of a pain to set up on windows, i have created an executable for Windows
-[here](https://github.com/simennj/itsdownloading/releases/download/v1.0/itsdownloading.exe).
+Since python can be a bit of a pain to set up on windows, i have created executables for Windows.
+You can find them [here](https://github.com/simennj/itsdownloading/releases).
