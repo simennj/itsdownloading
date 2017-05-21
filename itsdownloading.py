@@ -61,14 +61,42 @@ def get_values_from_form(form):
 
 def confirm_login(confirm_login_page):
     form = get_form_from_page(confirm_login_page)
-    if form.action[0:8] != 'https://':
+    try:
+        session.post(form.action, get_values_from_form(form))
+    except requests.exceptions.MissingSchema:
         return False
-    response = session.post(form.action, data=get_values_from_form(form))
-    with open('login_response.html', 'wb') as file:
-        file.write(response.content)
-    if response.url == 'https://www.itslearning.com/elogin/default.aspx':
-        return confirm_login(response)
-    return 'itslearning.com' in response.url
+    if school == 'hist':
+        hist_extra_login(confirm_login_page)
+    return True
+
+
+def hist_extra_login(confirm_login_page):
+    confirm_login_page2 = post_form_from_page(confirm_login_page)
+    confirm_login_page3 = post_form_from_page(confirm_login_page2)
+    with open('response.html', 'wb') as file:
+        file.write(confirm_login_page3.content)
+    tree = fromstring(confirm_login_page3.content)
+    data = {
+        '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$federatedLoginButtons$ctl00$ctl00',
+        '__EVENTARGUMENT': '',
+        '__VIEWSTATE': tree.xpath('//input[@name="__VIEWSTATE"]/@value')[0],
+        '__VIEWSTATEGENERATOR': '90059987',
+        '__EVENTVALIDATION': tree.xpath('//input[@name="__EVENTVALIDATION"]/@value')[0],
+        'ctl00$ContentPlaceHolder1$Username$input': '',
+        'ctl00$ContentPlaceHolder1$Password$input': '',
+        'ctl00$ContentPlaceHolder1$showNativeLoginValueField': '',
+        'ctl00$language_internal$H': '0'
+    }
+    page = session.post('https://hist.itslearning.com/Index.aspx', data=data)
+    confirm_login_page4 = post_form_from_page(page)
+    confirm_login_page5 = post_form_from_page(confirm_login_page4)
+    with open('response2.html', 'wb') as file:
+        file.write(confirm_login_page5.content)
+
+
+def post_form_from_page(page):
+    form = get_form_from_page(page)
+    return session.post(form.action, get_values_from_form(form))
 
 
 def select_urls():
