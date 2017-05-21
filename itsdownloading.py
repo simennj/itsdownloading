@@ -73,8 +73,6 @@ def confirm_login(confirm_login_page):
 def hist_extra_login(confirm_login_page):
     confirm_login_page2 = post_form_from_page(confirm_login_page)
     confirm_login_page3 = post_form_from_page(confirm_login_page2)
-    with open('response.html', 'wb') as file:
-        file.write(confirm_login_page3.content)
     tree = fromstring(confirm_login_page3.content)
     data = {
         '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$federatedLoginButtons$ctl00$ctl00',
@@ -90,8 +88,6 @@ def hist_extra_login(confirm_login_page):
     page = session.post('https://hist.itslearning.com/Index.aspx', data=data)
     confirm_login_page4 = post_form_from_page(page)
     confirm_login_page5 = post_form_from_page(confirm_login_page4)
-    with open('response2.html', 'wb') as file:
-        file.write(confirm_login_page5.content)
 
 
 def post_form_from_page(page):
@@ -139,8 +135,6 @@ def get_projects():
 
 def retrieve_topmenu_list(url):
     page = session.get(url)
-    with open('its.html', 'wb') as file:
-        file.write(page.content)
     tree = fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
