@@ -167,9 +167,9 @@ def download_folder(directory, url, folder_id):
             folder_id = re.search('FolderID=([0-9]+)', link_tail).groups()[0]
             download_folder(new_directory, url, folder_id)
         elif link_type == 'File':
-            download_file(directory, link_url)
+            download_from_file_page(directory, link_url)
         elif link_type == 'essay':
-            download_essay(directory, link_url)
+            download_from_essay_page(directory, link_url)
         elif link_type == 'note':
             save_note_as_html(directory, link_url, link_name)
         elif link_type == 'LearningToolElement':
@@ -197,25 +197,23 @@ def save_links_as_html(directory, link_url, name):
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def download_essay(directory, link_url):
+def download_from_essay_page(directory, link_url):
     essay_page = session.get(link_url)
     download_urls = fromstring(essay_page.content).xpath(
         '//div[@id="EssayDetailedInformation_FileListWrapper_FileList"]/ul/li/a/@href')
     for download_url in download_urls:
-        download = session.get(download_url, stream=True)
-        filepath = os.path.join(directory,
-                                re.findall('filename="(.+)"', download.headers['content-disposition'])[0])
-        with open(filepath, 'wb') as downloaded_file:
-            for chunk in download:
-                downloaded_file.write(chunk)
-        print('Downloaded: ', filepath)
+        download_file(directory, download_url)
 
 
-def download_file(directory, link_url):
+def download_from_file_page(directory, link_url):
     file_page = session.get(link_url)
     download_url = base_url + \
                    fromstring(file_page.content).xpath(
                        '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
+    download_file(directory, download_url)
+
+
+def download_file(directory, download_url):
     download = session.get(download_url, stream=True)
     raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
     if raw_file_name:
