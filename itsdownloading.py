@@ -4,7 +4,9 @@ import sys
 import os
 import re
 import requests
+from lxml.etree import XMLSyntaxError
 from lxml.html import fromstring
+from requests.exceptions import MissingSchema
 
 school = 'ntnu'
 if re.match('[hH].*', input('Choose ntnu or hist: ')):
@@ -207,14 +209,22 @@ def download_from_essay_page(directory, link_url):
 
 def download_from_file_page(directory, link_url):
     file_page = session.get(link_url)
-    download_url = base_url + \
-                   fromstring(file_page.content).xpath(
-                       '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
+    try:
+        download_url = base_url + \
+                       fromstring(file_page.content).xpath(
+                           '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
+    except XMLSyntaxError:
+        print("itslearning returned invalid XML. Sorry about that :/ Skipping!")
+        return
     download_file(directory, download_url)
 
 
 def download_file(directory, download_url):
-    download = session.get(download_url, stream=True)
+    try:
+        download = session.get(download_url, stream=True)
+    except MissingSchema:
+        print('error occurred during download; continuing past it')
+        return
     raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
     if raw_file_name:
         raw_file_name = raw_file_name[0]
