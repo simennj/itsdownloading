@@ -40,7 +40,7 @@ def console_login():
 
 def attempt_login(username, password):
     form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + school))
-    form = fill_login_form(form, username, password)
+    form = fill_login_form(form, username.lower(), password)
     login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
     data = get_values_from_form(form)
     confirm_login_page = session.post(login_url, data=data)
