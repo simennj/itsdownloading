@@ -13,6 +13,12 @@ if re.match('[hH].*', input('Choose ntnu or hist: ')):
     school = 'hist'
 print('You chose ' + school)
 base_url = 'https://{}.itslearning.com'.format(school)
+if re.match('[yYjJ].*', input('Include assignment answers? y/n: ')):
+    include_assignment_answers = True
+    print('Including assignment answers.')
+else:
+    include_assignment_answers = False
+    print('Not including assignment answers.')
 session = requests.Session()
 
 
@@ -201,8 +207,11 @@ def save_links_as_html(directory, link_url, name):
 
 def download_from_essay_page(directory, link_url):
     essay_page = session.get(link_url)
-    download_urls = fromstring(essay_page.content).xpath(
+    tree = fromstring(essay_page.content)
+    download_urls = tree.xpath(
         '//div[@id="EssayDetailedInformation_FileListWrapper_FileList"]/ul/li/a/@href')
+    if include_assignment_answers:
+        download_urls += tree.xpath('//div[@id="DF_FileList"]/ul/li/a[@class="ccl-iconlink"]/@href')
     for download_url in download_urls:
         download_file(directory, download_url)
 
