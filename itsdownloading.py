@@ -162,7 +162,7 @@ def download_course_or_project(url):
     download_folder(directory, url, folder_id)
 
 
-def download_folder(directory, url, folder_id):
+def download_folder(directory, url, folder_id, excluded_folders=set()):
     page = session.get('{}&id=item{}'.format(url, folder_id))
     tree = fromstring(page.content)
     os.makedirs(directory, exist_ok=True)
@@ -170,10 +170,12 @@ def download_folder(directory, url, folder_id):
         link_type, link_tail = link_element.xpath('@href')[0].split('/')[-2:]
         link_url = '{}/{}/{}'.format(base_url, link_type, link_tail)
         link_name = "".join(char if char.isalnum() else '_' for char in link_element.xpath('.//text()')[0].strip())
-        if link_type == 'Folder':
+        if link_type == 'Folder' or link_type == 'ContentArea':
+            excluded_folders.add(folder_id)
             new_directory = os.path.join(directory, link_name)
             folder_id = re.search('FolderID=([0-9]+)', link_tail).groups()[0]
-            download_folder(new_directory, url, folder_id)
+            if folder_id not in excluded_folders:
+                download_folder(new_directory, url, folder_id, excluded_folders)
         elif link_type == 'File':
             download_from_file_page(directory, link_url)
         elif link_type == 'essay':
