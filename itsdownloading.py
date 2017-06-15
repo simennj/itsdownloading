@@ -8,17 +8,16 @@ from lxml.etree import XMLSyntaxError
 from lxml.html import fromstring
 from requests.exceptions import MissingSchema
 
-school = 'ntnu'
-if re.match('[hH].*', input('Choose ntnu or hist: ')):
-    school = 'hist'
-print('You chose ' + school)
-base_url = 'https://{}.itslearning.com'.format(school)
-if re.match('[yYjJ].*', input('Include assignment answers? y/n: ')):
-    include_assignment_answers = True
-    print('Including assignment answers.')
-else:
-    include_assignment_answers = False
-    print('Not including assignment answers.')
+
+class Settings:
+    def __init__(self):
+        self.school = 'ntnu'
+        self.base_url = 'https://{}.itslearning.com'.format(self.school)
+        self.include_assignment_answers = False
+        self.session = requests.Session()
+
+
+settings = Settings()
 session = requests.Session()
 
 
@@ -30,6 +29,16 @@ def main():
 
 
 def console_login():
+    if re.match('[hH].*', input('Choose ntnu or hist: ')):
+        settings.school = 'hist'
+    print('You chose ' + settings.school)
+    settings.base_url = 'https://{}.itslearning.com'.format(settings.school)
+    if re.match('[yYjJ].*', input('Include assignment answers? y/n: ')):
+        settings.include_assignment_answers = True
+        print('Including assignment answers.')
+    else:
+        settings.include_assignment_answers = False
+        print('Not including assignment answers.')
     import getpass
     logged_in = False
     while not logged_in:
@@ -39,7 +48,7 @@ def console_login():
 
 
 def attempt_login(username, password):
-    form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + school))
+    form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + settings.school))
     form = fill_login_form(form, username.lower(), password)
     login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
     data = get_values_from_form(form)
@@ -73,7 +82,7 @@ def confirm_login(confirm_login_page):
         session.post(form.action, get_values_from_form(form))
     except requests.exceptions.MissingSchema:
         return False
-    if school == 'hist':
+    if settings.school == 'hist':
         hist_extra_login(confirm_login_page)
     return True
 
@@ -95,7 +104,7 @@ def hist_extra_login(confirm_login_page):
     }
     page = session.post('https://hist.itslearning.com/Index.aspx', data=data)
     confirm_login_page4 = post_form_from_page(page)
-    confirm_login_page5 = post_form_from_page(confirm_login_page4)
+    post_form_from_page(confirm_login_page4)
 
 
 def post_form_from_page(page):
@@ -123,22 +132,22 @@ def get_courses_and_projects():
     projects = get_projects()
     return {
         **{
-            course_name: base_url + "/main.aspx?CourseID=" + course_id
+            course_name: settings.base_url + "/main.aspx?CourseID=" + course_id
             for course_name, course_id in courses.items()
         },
         **{
-            project_name: base_url + "/main.aspx?ProjectID=" + project_id
+            project_name: settings.base_url + "/main.aspx?ProjectID=" + project_id
             for project_name, project_id in projects.items()
         }
     }
 
 
 def get_courses():
-    return retrieve_topmenu_list(base_url + "/TopMenu/TopMenu/GetCourses")
+    return retrieve_topmenu_list(settings.base_url + "/TopMenu/TopMenu/GetCourses")
 
 
 def get_projects():
-    return retrieve_topmenu_list(base_url + "/TopMenu/TopMenu/GetProjects")
+    return retrieve_topmenu_list(settings.base_url + "/TopMenu/TopMenu/GetProjects")
 
 
 def retrieve_topmenu_list(url):
@@ -168,7 +177,7 @@ def download_folder(directory, url, folder_id, excluded_folders=set()):
     os.makedirs(directory, exist_ok=True)
     for link_element in tree.xpath('//a'):
         link_type, link_tail = link_element.xpath('@href')[0].split('/')[-2:]
-        link_url = '{}/{}/{}'.format(base_url, link_type, link_tail)
+        link_url = '{}/{}/{}'.format(settings.base_url, link_type, link_tail)
         link_name = "".join(char if char.isalnum() else '_' for char in link_element.xpath('.//text()')[0].strip())
         if link_type == 'Folder' or link_type == 'ContentArea':
             excluded_folders.add(folder_id)
@@ -212,7 +221,7 @@ def download_from_essay_page(directory, link_url):
     tree = fromstring(essay_page.content)
     download_urls = tree.xpath(
         '//div[@id="EssayDetailedInformation_FileListWrapper_FileList"]/ul/li/a/@href')
-    if include_assignment_answers:
+    if settings.include_assignment_answers:
         download_urls += tree.xpath('//div[@id="DF_FileList"]/ul/li/a[@class="ccl-iconlink"]/@href')
     for download_url in download_urls:
         download_file(directory, download_url)
@@ -221,7 +230,7 @@ def download_from_essay_page(directory, link_url):
 def download_from_file_page(directory, link_url):
     file_page = session.get(link_url)
     try:
-        download_url = base_url + \
+        download_url = settings.base_url + \
                        fromstring(file_page.content).xpath(
                            '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
     except XMLSyntaxError:
