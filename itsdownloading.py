@@ -1,11 +1,11 @@
 #! /usr/bin/env python3
 import sys
 
+import lxml.html
 import os
 import re
 import requests
 from lxml.etree import XMLSyntaxError
-from lxml.html import fromstring
 from requests.exceptions import MissingSchema
 
 
@@ -58,7 +58,7 @@ def console_login():
         logged_in = attempt_login(username, password)
 
 
-def attempt_login(username, password):
+def attempt_login(username: str, password: str) -> bool:
     form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + settings.school))
     form = fill_login_form(form, username.lower(), password)
     login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
@@ -68,8 +68,8 @@ def attempt_login(username, password):
     return logged_in
 
 
-def get_form_from_page(page):
-    tree = fromstring(page.content)
+def get_form_from_page(page: requests.Response) -> lxml.html.FormElement:
+    tree = lxml.html.fromstring(page.content)
     form = tree.forms[0]
     if form.xpath('fieldset/select[@name="org"]'):
         page = session.get(page.url + '&org=ntnu.no')
@@ -77,17 +77,17 @@ def get_form_from_page(page):
     return form
 
 
-def fill_login_form(form, username, password):
+def fill_login_form(form: lxml.html.FormElement, username: str, password: str) -> lxml.html.FormElement:
     form.inputs['feidename'].value = username
     form.inputs['password'].value = password
     return form
 
 
-def get_values_from_form(form):
+def get_values_from_form(form: lxml.html.FormElement) -> dict:
     return {i.xpath("@name")[0]: i.xpath("@value")[0] for i in form.xpath(".//input[@name]") if i.xpath("@value")}
 
 
-def confirm_login(confirm_login_page):
+def confirm_login(confirm_login_page: requests.Response) -> bool:
     form = get_form_from_page(confirm_login_page)
     try:
         session.post(form.action, get_values_from_form(form))
@@ -98,10 +98,10 @@ def confirm_login(confirm_login_page):
     return True
 
 
-def hist_extra_login(confirm_login_page):
+def hist_extra_login(confirm_login_page: requests.Response):
     confirm_login_page2 = post_form_from_page(confirm_login_page)
     confirm_login_page3 = post_form_from_page(confirm_login_page2)
-    tree = fromstring(confirm_login_page3.content)
+    tree = lxml.html.fromstring(confirm_login_page3.content)
     data = {
         '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$federatedLoginButtons$ctl00$ctl00',
         '__EVENTARGUMENT': '',
@@ -118,12 +118,12 @@ def hist_extra_login(confirm_login_page):
     post_form_from_page(confirm_login_page4)
 
 
-def post_form_from_page(page):
+def post_form_from_page(page: requests.Response) -> requests.Response:
     form = get_form_from_page(page)
     return session.post(form.action, get_values_from_form(form))
 
 
-def select_urls():
+def select_urls() -> list:
     choices = get_courses_and_projects()
     names = list(choices)
     print('Found the following favorite courses and projects:')
@@ -138,7 +138,7 @@ def select_urls():
     return selected_urls
 
 
-def get_courses_and_projects():
+def get_courses_and_projects() -> dict:
     courses = get_courses()
     projects = get_projects()
     return {
@@ -153,17 +153,17 @@ def get_courses_and_projects():
     }
 
 
-def get_courses():
+def get_courses() -> dict:
     return retrieve_topmenu_list(settings.base_url + "/TopMenu/TopMenu/GetCourses")
 
 
-def get_projects():
+def get_projects() -> dict:
     return retrieve_topmenu_list(settings.base_url + "/TopMenu/TopMenu/GetProjects")
 
 
-def retrieve_topmenu_list(url):
+def retrieve_topmenu_list(url: str) -> dict:
     page = session.get(url)
-    tree = fromstring(page.content)
+    tree = lxml.html.fromstring(page.content)
     return {
         item.xpath('@data-title')[0]: item.xpath('a/@href')[0].split('=')[-1]
         for item in tree.xpath('//li')
@@ -171,10 +171,10 @@ def retrieve_topmenu_list(url):
     }
 
 
-def download_course_or_project(url):
+def download_course_or_project(url: str):
     page = session.get(url)
     url = page.url
-    tree = fromstring(page.content)
+    tree = lxml.html.fromstring(page.content)
     folder_id = re.search('var contentAreaRootFolderId = \"item\" \+ ([0-9]+);',
                           tree.xpath('//aside/script')[0].text).groups()[0]
     title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
@@ -182,9 +182,9 @@ def download_course_or_project(url):
     download_folder(directory, url, folder_id)
 
 
-def download_folder(directory, url, folder_id, excluded_folders=set()):
+def download_folder(directory: str, url: str, folder_id: str, excluded_folders: set = set()):
     page = session.get('{}&id=item{}'.format(url, folder_id))
-    tree = fromstring(page.content)
+    tree = lxml.html.fromstring(page.content)
     os.makedirs(directory, exist_ok=True)
     for link_element in tree.xpath('//a'):
         link_type, link_tail = link_element.xpath('@href')[0].split('/')[-2:]
@@ -210,16 +210,16 @@ def download_folder(directory, url, folder_id, excluded_folders=set()):
             print('Will not download: {}, (is a {})'.format(os.path.join(directory, link_name), link_type))
 
 
-def save_note_as_html(directory, link_url, name):
+def save_note_as_html(directory: str, link_url: str, name: str):
     page_to_download = session.get(link_url).content
     with open(os.path.join(directory, name + '.html'), 'wb') as downloaded_file:
         downloaded_file.write(page_to_download)
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def save_links_as_html(directory, link_url, name):
+def save_links_as_html(directory: str, link_url: str, name: str):
     page = session.get(link_url)
-    tree = fromstring(page.content)
+    tree = lxml.html.fromstring(page.content)
     url = tree.xpath('//iframe/@src')[0]
     page_to_download = session.get(url).content
     with open(os.path.join(directory, name + '.html'), 'wb') as downloaded_file:
@@ -227,9 +227,9 @@ def save_links_as_html(directory, link_url, name):
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def download_from_essay_page(directory, link_url):
+def download_from_essay_page(directory: str, link_url: str):
     essay_page = session.get(link_url)
-    tree = fromstring(essay_page.content)
+    tree = lxml.html.fromstring(essay_page.content)
     download_urls = tree.xpath(
         '//div[@id="EssayDetailedInformation_FileListWrapper_FileList"]/ul/li/a/@href')
     if settings.include_assignment_answers:
@@ -238,11 +238,11 @@ def download_from_essay_page(directory, link_url):
         download_file(directory, download_url)
 
 
-def download_from_file_page(directory, link_url):
+def download_from_file_page(directory: str, link_url: str):
     file_page = session.get(link_url)
     try:
         download_url = settings.base_url + \
-                       fromstring(file_page.content).xpath(
+                       lxml.html.fromstring(file_page.content).xpath(
                            '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
     except XMLSyntaxError:
         print("itslearning returned invalid XML. Sorry about that :/ Skipping!")
@@ -250,7 +250,7 @@ def download_from_file_page(directory, link_url):
     download_file(directory, download_url)
 
 
-def download_file(directory, download_url):
+def download_file(directory: str, download_url: str):
     try:
         download = session.get(download_url, stream=True)
     except MissingSchema:
