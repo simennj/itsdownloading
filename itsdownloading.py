@@ -22,13 +22,14 @@ session = requests.Session()
 
 
 def main():
+    console_settings_init()
     console_login()
     selected_urls = select_urls()
     for selected_url in selected_urls:
         download_course_or_project(selected_url)
 
 
-def console_login():
+def console_settings_init():
     if re.match('[hH].*', input('Choose ntnu or hist: ')):
         settings.school = 'hist'
     print('You chose ' + settings.school)
@@ -39,6 +40,9 @@ def console_login():
     else:
         settings.include_assignment_answers = False
         print('Not including assignment answers.')
+
+
+def console_login():
     import getpass
     logged_in = False
     while not logged_in:
