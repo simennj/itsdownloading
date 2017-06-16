@@ -14,6 +14,7 @@ class Settings:
         self.school = 'ntnu'
         self.base_url = 'https://{}.itslearning.com'.format(self.school)
         self.include_assignment_answers = False
+        self.root_dir = os.path.abspath(os.path.join(os.path.curdir, 'Downloaded courses'))
         self.session = requests.Session()
 
 
@@ -40,6 +41,12 @@ def console_settings_init():
     else:
         settings.include_assignment_answers = False
         print('Not including assignment answers.')
+    new_path = input(
+        'Current location is to "{}".\r\n'
+        'Type a new path to change it or just press enter to keep it:\r\n'.format(settings.root_dir))
+    if new_path:
+        settings.root_dir = new_path
+    print('Path is set to "{}".'.format(settings.root_dir))
 
 
 def console_login():
@@ -171,7 +178,7 @@ def download_course_or_project(url):
     folder_id = re.search('var contentAreaRootFolderId = \"item\" \+ ([0-9]+);',
                           tree.xpath('//aside/script')[0].text).groups()[0]
     title = tree.xpath('//h1[@class="treemenu-title"]/span/text()')[0]
-    directory = os.path.join(os.path.curdir, 'Downloaded courses', title)
+    directory = os.path.join(settings.root_dir, title)
     download_folder(directory, url, folder_id)
 
 
