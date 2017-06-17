@@ -29,7 +29,7 @@ session = requests.Session()
 def main():
     console_settings_init()
     console_login()
-    selected_urls = select_urls()
+    selected_urls = console_select_urls()
     for selected_url in selected_urls:
         download_course_or_project(selected_url)
 
@@ -126,7 +126,7 @@ def post_form_from_page(page: requests.Response) -> requests.Response:
     return session.post(form.action, get_values_from_form(form))
 
 
-def select_urls() -> list:
+def console_select_urls() -> list:
     choices = get_courses_and_projects()
     names = list(choices)
     print('Found the following favorite courses and projects:')
