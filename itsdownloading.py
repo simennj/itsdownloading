@@ -42,7 +42,7 @@ def console_settings_init():
         settings.include_assignment_answers = False
         print('Not including assignment answers.')
     new_path = input(
-        'Current location is to "{}".\r\n'
+        'Current location is "{}".\r\n'
         'Type a new path to change it or just press enter to keep it:\r\n'.format(settings.root_dir))
     if new_path:
         settings.root_dir = new_path
