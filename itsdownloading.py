@@ -17,6 +17,10 @@ class Settings:
         self.root_dir = os.path.abspath(os.path.join(os.path.curdir, 'Downloaded courses'))
         self.session = requests.Session()
 
+    def set_school_and_base_url(self, school: str):
+        self.school = school
+        self.base_url = 'https://{}.itslearning.com'.format(self.school)
+
 
 settings = Settings()
 session = requests.Session()
@@ -32,9 +36,8 @@ def main():
 
 def console_settings_init():
     if re.match('[hH].*', input('Choose ntnu or hist: ')):
-        settings.school = 'hist'
+        settings.set_school_and_base_url('hist')
     print('You chose ' + settings.school)
-    settings.base_url = 'https://{}.itslearning.com'.format(settings.school)
     if re.match('[yYjJ].*', input('Include assignment answers? y/n: ')):
         settings.include_assignment_answers = True
         print('Including assignment answers.')
