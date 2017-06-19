@@ -63,9 +63,10 @@ def console_login():
 
 def attempt_login(username: str, password: str) -> bool:
     form = get_form_from_page(session.get('https://innsida.ntnu.no/lms-' + settings.school))
-    form = fill_login_form(form, username.lower(), password)
     login_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php' + form.action
     data = get_values_from_form(form)
+    data['feidename'] = username.lower()
+    data['password'] = password
     confirm_login_page = session.post(login_url, data=data)
     logged_in = confirm_login(confirm_login_page)
     return logged_in
@@ -77,12 +78,6 @@ def get_form_from_page(page: requests.Response) -> lxml.html.FormElement:
     if form.xpath('fieldset/select[@name="org"]'):
         page = session.get(page.url + '&org=ntnu.no')
         return get_form_from_page(page)
-    return form
-
-
-def fill_login_form(form: lxml.html.FormElement, username: str, password: str) -> lxml.html.FormElement:
-    form.inputs['feidename'].value = username
-    form.inputs['password'].value = password
     return form
 
 
