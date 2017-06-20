@@ -201,7 +201,7 @@ def download_folder(directory: str, url: str, folder_id: str, excluded_folders: 
         elif link_type == 'note':
             save_note_as_html(directory, link_url, link_name)
         elif link_type == 'LearningToolElement':
-            save_links_as_html(directory, link_url, link_name)
+            save_link(directory, link_url, link_name)
         elif link_type == '':
             pass
         else:
@@ -215,14 +215,19 @@ def save_note_as_html(directory: str, link_url: str, name: str):
     print('Saved {} as a html file'.format(os.path.join(directory, name)))
 
 
-def save_links_as_html(directory: str, link_url: str, name: str):
-    page = session.get(link_url)
-    tree = lxml.html.fromstring(page.content)
-    url = tree.xpath('//iframe/@src')[0]
-    page_to_download = session.get(url).content
-    with open(os.path.join(directory, name + '.html'), 'wb') as downloaded_file:
-        downloaded_file.write(page_to_download)
-    print('Saved {} as a html file'.format(os.path.join(directory, name)))
+def save_link(directory: str, link_url: str, name: str):
+    tree = get_tree(get_tree(link_url).xpath('//iframe/@src')[0])
+    link = tree.xpath('//section[@class="file-link-link"]/a')[0]
+    if 'download' in link.keys():
+        download_file(directory, link.get('href'))
+    else:
+        with open(os.path.join(directory, name + '.txt'), 'w') as downloaded_file:
+            downloaded_file.write(link.get('href'))
+        print('Saved {} as a html file'.format(os.path.join(directory, name)))
+
+
+def get_tree(url):
+    return lxml.html.fromstring(session.get(url).content)
 
 
 def download_from_essay_page(directory: str, link_url: str):
