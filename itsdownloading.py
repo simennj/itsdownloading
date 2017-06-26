@@ -199,7 +199,7 @@ def download_folder(directory: str, url: str, folder_id: str, excluded_folders: 
         elif link_type == 'essay':
             download_from_essay_page(directory, link_url)
         elif link_type == 'note':
-            save_note_as_html(directory, link_url, link_name)
+            save_as_html(directory, link_url, link_name)
         elif link_type == 'LearningToolElement':
             save_link(directory, link_url, link_name)
         elif link_type == '':
@@ -208,7 +208,7 @@ def download_folder(directory: str, url: str, folder_id: str, excluded_folders: 
             print('Will not download: {}, (is a {})'.format(os.path.join(directory, link_name), link_type))
 
 
-def save_note_as_html(directory: str, link_url: str, name: str):
+def save_as_html(directory: str, link_url: str, name: str):
     page_to_download = session.get(link_url).content
     with open(os.path.join(directory, name + '.html'), 'wb') as downloaded_file:
         downloaded_file.write(page_to_download)
@@ -217,7 +217,12 @@ def save_note_as_html(directory: str, link_url: str, name: str):
 
 def save_link(directory: str, link_url: str, name: str):
     tree = get_tree(get_tree(link_url).xpath('//iframe/@src')[0])
-    link = tree.xpath('//section[@class="file-link-link"]/a')[0]
+    try:
+        link = tree.xpath('//section[@class="file-link-link"]/a')[0]
+    except IndexError:
+        print("could not find download link in page {}, downloading page instead.".format(link_url))
+        save_as_html(directory, link_url, name)
+        return
     if 'download' in link.keys():
         download_file(directory, link.get('href'))
     else:
