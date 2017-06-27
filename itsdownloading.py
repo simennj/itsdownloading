@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import sys
+import traceback
 
 import lxml.html
 import os
@@ -30,8 +31,17 @@ def main():
     console_settings_init()
     console_login()
     selected_urls = console_select_urls()
-    for selected_url in selected_urls:
-        download_course_or_project(selected_url)
+    for selected_name, selected_url in selected_urls:
+        try:
+            download_course_or_project(selected_url)
+        except:
+            print('failed to download the course/project {}'.format(selected_name))
+            cur_dir = os.path.join(settings.root_dir, selected_name)
+            file_path = os.path.join(cur_dir, 'errors.txt')
+            print('saving error log to {}'.format(file_path))
+            os.makedirs(cur_dir, exist_ok=True)
+            with open(file_path, 'w') as file:
+                file.write(traceback.format_exc())
 
 
 def console_settings_init():
@@ -130,9 +140,9 @@ def console_select_urls() -> list:
     print('all: all')
     answer = input('List the ones you want to download. Eg. 2 5 6 7 12 3. Or type all\n: ')
     if answer == 'all':
-        selected_urls = choices.values()
+        selected_urls = list(choices.items())
     else:
-        selected_urls = [choices[names[int(i)]] for i in answer.split()]
+        selected_urls = [(names[int(i)], choices[names[int(i)]]) for i in answer.split()]
     return selected_urls
 
 
