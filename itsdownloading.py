@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import datetime
 import sys
 import traceback
 
@@ -6,8 +7,6 @@ import lxml.html
 import os
 import re
 import requests
-from lxml.etree import XMLSyntaxError
-from requests.exceptions import MissingSchema
 
 
 class Settings:
@@ -34,14 +33,18 @@ def main():
     for selected_name, selected_url in selected_urls:
         try:
             download_course_or_project(selected_url)
-        except:
+        except Exception:
             print('failed to download the course/project {}'.format(selected_name))
             cur_dir = os.path.join(settings.root_dir, selected_name)
             file_path = os.path.join(cur_dir, 'errors.txt')
             print('saving error log to {}'.format(file_path))
             os.makedirs(cur_dir, exist_ok=True)
-            with open(file_path, 'w') as file:
+            with open(file_path, 'a') as file:
+                file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
+                file.write('start error at {}\r\n'.format(datetime.datetime.now()))
                 file.write(traceback.format_exc())
+                file.write('\r\nend error at {}'.format(datetime.datetime.now()))
+                file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
 
 
 def console_settings_init():
@@ -257,13 +260,21 @@ def download_from_essay_page(directory: str, link_url: str):
 
 
 def download_from_file_page(directory: str, link_url: str):
-    file_page = session.get(link_url)
     try:
-        download_url = settings.base_url + \
-                       lxml.html.fromstring(file_page.content).xpath(
-                           '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href')[0][2:]
-    except XMLSyntaxError:
-        print("itslearning returned invalid XML. Sorry about that :/ Skipping!")
+        file_page = session.get(link_url)
+        download_url = settings.base_url + lxml.html.fromstring(file_page.content).xpath(
+            '//a[@class="ccl-button ccl-button-color-green ccl-button-submit"]/@href'
+        )[0][2:]
+    except Exception:
+        print('failed to download the file from {} in {}'.format(link_url, directory))
+        file_path = os.path.join(directory, 'errors.txt')
+        print('saving error log to {}'.format(file_path))
+        with open(file_path, 'a') as file:
+            file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
+            file.write('start error from {} in {} at {}\r\n'.format(link_url, directory, datetime.datetime.now()))
+            file.write(traceback.format_exc())
+            file.write('\r\nend error from {} in {} at {}'.format(link_url, directory, datetime.datetime.now()))
+            file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
         return
     download_file(directory, download_url)
 
@@ -271,20 +282,27 @@ def download_from_file_page(directory: str, link_url: str):
 def download_file(directory: str, download_url: str):
     try:
         download = session.get(download_url, stream=True)
-    except MissingSchema:
-        print('error occurred during download; continuing past it')
-        return
-    raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
-    if raw_file_name:
-        raw_file_name = raw_file_name[0]
-    else:
-        return
-    filename = raw_file_name.encode('iso-8859-1').decode()
-    filepath = os.path.join(directory, filename)
-    with open(filepath, 'wb') as downloaded_file:
-        for chunk in download:
-            downloaded_file.write(chunk)
-    print('Downloaded: ', filepath)
+        raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
+        if raw_file_name:
+            raw_file_name = raw_file_name[0]
+        else:
+            return
+        filename = raw_file_name.encode('iso-8859-1').decode()
+        filepath = os.path.join(directory, filename)
+        with open(filepath, 'wb') as downloaded_file:
+            for chunk in download:
+                downloaded_file.write(chunk)
+        print('Downloaded: ', filepath)
+    except Exception:
+        print('failed to download the file from {} in {}'.format(download_url, directory))
+        file_path = os.path.join(directory, 'errors.txt')
+        print('saving error log to {}'.format(file_path))
+        with open(file_path, 'a') as file:
+            file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
+            file.write('start error from {} in {} at {}\r\n'.format(download_url, directory, datetime.datetime.now()))
+            file.write(traceback.format_exc())
+            file.write('\r\nend error from {} in {} at {}'.format(download_url, directory, datetime.datetime.now()))
+            file.write('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
 
 
 if __name__ == '__main__':
