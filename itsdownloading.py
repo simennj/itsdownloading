@@ -69,9 +69,13 @@ def console_login():
     import getpass
     logged_in = False
     while not logged_in:
-        username = input('Brukernavn: ')
-        password = getpass.getpass('Passord: ')
+        username = input('Username: ')
+        print('No characters are shown while typing in a password in a terminal or cmd.')
+        print('Just type in the password and press enter like normal, the window is not frozen.')
+        password = getpass.getpass('Password: ')
         logged_in = attempt_login(username, password)
+        if not logged_in:
+            print('Wrong username or password.')
 
 
 def attempt_login(username: str, password: str) -> bool:
