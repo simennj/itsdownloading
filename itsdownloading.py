@@ -16,10 +16,15 @@ class Settings:
         self.include_assignment_answers = False
         self.root_dir = os.path.abspath(os.path.join(os.path.curdir, 'Downloaded courses'))
         self.session = requests.Session()
+        self.unnamed_counter = 0
 
     def set_school_and_base_url(self, school: str):
         self.school = school
         self.base_url = 'https://{}.itslearning.com'.format(self.school)
+
+    def unnamed_count(self):
+        self.unnamed_counter = self.unnamed_counter + 1
+        return self.unnamed_counter
 
 
 settings = Settings()
@@ -295,11 +300,14 @@ def download_from_file_page(directory: str, link_url: str):
 def download_file(directory: str, download_url: str):
     try:
         download = session.get(download_url, stream=True)
-        raw_file_name = re.findall('filename="(.+)"', download.headers['content-disposition'])
-        if raw_file_name:
-            raw_file_name = raw_file_name[0]
-        else:
-            return
+        try:
+            content_disposition = download.headers['content-disposition']
+            raw_file_name = re.findall('filename="(.+)"', content_disposition)[0]
+        except Exception:
+            print('The file from {} in {} does not seem to have a name. Saving as unnamed{}.txt'.format(download_url,
+                                                                                                        directory,
+                                                                                                        settings.unnamed_counter))
+            raw_file_name = 'unnamed{}.txt'.format(settings.unnamed_count)
         filename = raw_file_name.encode('iso-8859-1').decode()
         filepath = os.path.join(directory, filename)
         with open(filepath, 'wb') as downloaded_file:
