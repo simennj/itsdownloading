@@ -117,20 +117,29 @@ def hist_extra_login(confirm_login_page: requests.Response):
     confirm_login_page2 = post_form_from_page(confirm_login_page)
     confirm_login_page3 = post_form_from_page(confirm_login_page2)
     tree = lxml.html.fromstring(confirm_login_page3.content)
-    data = {
-        '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$federatedLoginButtons$ctl00$ctl00',
-        '__EVENTARGUMENT': '',
-        '__VIEWSTATE': tree.xpath('//input[@name="__VIEWSTATE"]/@value')[0],
-        '__VIEWSTATEGENERATOR': '90059987',
-        '__EVENTVALIDATION': tree.xpath('//input[@name="__EVENTVALIDATION"]/@value')[0],
-        'ctl00$ContentPlaceHolder1$Username$input': '',
-        'ctl00$ContentPlaceHolder1$Password$input': '',
-        'ctl00$ContentPlaceHolder1$showNativeLoginValueField': '',
-        'ctl00$language_internal$H': '0'
-    }
-    page = session.post('https://hist.itslearning.com/Index.aspx', data=data)
-    confirm_login_page4 = post_form_from_page(page)
-    post_form_from_page(confirm_login_page4)
+    try:
+        data = {
+            '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$federatedLoginButtons$ctl00$ctl00',
+            '__EVENTARGUMENT': '',
+            '__VIEWSTATE': tree.xpath('//input[@name="__VIEWSTATE"]/@value')[0],
+            '__VIEWSTATEGENERATOR': '90059987',
+            '__EVENTVALIDATION': tree.xpath('//input[@name="__EVENTVALIDATION"]/@value')[0],
+            'ctl00$ContentPlaceHolder1$Username$input': '',
+            'ctl00$ContentPlaceHolder1$Password$input': '',
+            'ctl00$ContentPlaceHolder1$showNativeLoginValueField': '',
+            'ctl00$language_internal$H': '0'
+        }
+        page = session.post('https://hist.itslearning.com/Index.aspx', data=data)
+        confirm_login_page4 = post_form_from_page(page)
+        post_form_from_page(confirm_login_page4)
+    except IndexError:
+        with open(os.path.join(settings.root_dir, 'login_error.html'), 'wb') as file:
+            file.write(confirm_login_page3.content)
+        print('Login process seems to have failed on the page saved as login_error.html')
+        print('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
+        print(traceback.format_exc())
+        print('\r\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\r\n')
+        print('Trying to continue anyway (if no courses are shown, the login failed)')
 
 
 def post_form_from_page(page: requests.Response) -> requests.Response:
